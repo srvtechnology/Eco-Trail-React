@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { GoogleMap, Marker, Autocomplete, useJsApiLoader } from '@react-google-maps/api';
+import NearPlaceMaps from './NearPlaceMaps';
+import axios from 'axios';
 
 const libraries = ['places'];
 const mapContainerStyle = {
@@ -45,6 +47,13 @@ const EcoTrailForm = () => {
   const mapRef = useRef(null);
   const mainAutocompleteRef = useRef(null);
   const nearbyAutocompleteRefs = useRef([]);
+
+
+  useEffect(() => {
+    axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/space-sub-categories`)
+      .then(res => setSubCategories(res.data))
+      .catch(err => console.error(err));
+  }, []);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -103,13 +112,13 @@ const EcoTrailForm = () => {
       });
 
       setExistingImages(parsedGalleryImages.map(img => ({
-        url: `${import.meta.env.VITE_STORAGE_URL}/${img}`,
+        url: `${import.meta.env.VITE_API_BASE_URL}/storage/${img}`,
         path: img
       })));
 
       if (data.featured_image) {
         setFeaturedImagePreview({
-          url: `${import.meta.env.VITE_STORAGE_URL}/${data.featured_image}`,
+          url: `${import.meta.env.VITE_API_BASE_URL}/storage/${data.featured_image}`,
           path: data.featured_image
         });
       }
@@ -201,7 +210,7 @@ const EcoTrailForm = () => {
       if (place.geometry) {
         const lat = place.geometry.location.lat();
         const lng = place.geometry.location.lng();
-        
+
         handleNearbyPlaceChange(placeIndex, 'latitude', lat);
         handleNearbyPlaceChange(placeIndex, 'longitude', lng);
         handleNearbyPlaceChange(placeIndex, 'address', place.formatted_address);
@@ -381,7 +390,7 @@ const EcoTrailForm = () => {
       const url = isEditMode
         ? `${import.meta.env.VITE_API_BASE_URL}/api/eco-trail/main-spaces/${id}?_method=PUT`
         : `${import.meta.env.VITE_API_BASE_URL}/api/eco-trail/main-spaces`;
-        
+
 
       const method = isEditMode ? 'POST' : 'POST';
 
@@ -532,21 +541,34 @@ const EcoTrailForm = () => {
             </div>
           </div>
 
-          <div className="mt-4" style={{ height: '400px' }}>
-            <GoogleMap
-              mapContainerStyle={mapContainerStyle}
-              center={mapCenter}
-              zoom={15}
-              onLoad={onMapLoad}
-              onUnmount={onUnmount}
-            >
-              {formData.latitude && formData.longitude && (
-                <Marker
-                  position={{ lat: parseFloat(formData.latitude), lng: parseFloat(formData.longitude) }}
-                />
-              )}
-            </GoogleMap>
-          </div>
+
+          {formData.latitude && formData.longitude ? (
+            <div className="mt-2 text-sm text-gray-600">
+              Coordinates: {formData.latitude}, {formData.longitude}
+            </div>
+          ) : (
+            <div className="mt-4" style={{ height: '400px' }}>
+              <GoogleMap
+                mapContainerStyle={mapContainerStyle}
+                center={{
+                  lat: parseFloat(formData.latitude),
+                  lng: parseFloat(formData.longitude),
+                }}
+                zoom={15}
+                onLoad={onMapLoad}
+                onUnmount={onUnmount}
+              >
+                {formData.latitude && formData.longitude && (
+                  <Marker
+                    position={{ lat: Number(formData.latitude), lng: Number(formData.longitude) }}
+                  />
+                )}
+              </GoogleMap>
+            </div>
+
+          )}
+
+          <NearPlaceMaps lat={formData.latitude} lng={formData.longitude} />
         </div>
 
         <div className="mb-8 p-4 border rounded-lg">
@@ -719,6 +741,9 @@ const EcoTrailForm = () => {
                     required
                   />
                 </div>
+
+
+                <NearPlaceMaps lat={place?.latitude} lng={place?.longitude} />
 
                 <div>
                   <label className="block mb-2 font-medium">Distance from Main Place*</label>

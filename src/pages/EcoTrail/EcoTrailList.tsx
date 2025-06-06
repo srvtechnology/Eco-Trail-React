@@ -4,11 +4,37 @@ import { Link, useNavigate } from 'react-router';
 const EcoTrailList = () => {
     const [mainSpaces, setMainSpaces] = useState([]);
     const [search, setSearch] = useState('');
-    const [subCatId, setSubCatId] = useState('');
+    const [CatId, setCatId] = useState('');
     const [meta, setMeta] = useState({});
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(1);
     const navigate = useNavigate();
+
+    const [categories, setCategories] = useState([]);
+
+
+    const fetchCategories = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(
+                `${import.meta.env.VITE_API_BASE_URL}/api/space-categories`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                    },
+                }
+            );
+            const data = await res.json();
+            setCategories(data.data);
+        } catch (error) {
+            console.error('Failed to fetch categories:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchCategories();
+    }, []);
 
     const fetchMainSpaces = async () => {
         setLoading(true);
@@ -17,7 +43,7 @@ const EcoTrailList = () => {
             let url = `${import.meta.env.VITE_API_BASE_URL}/api/eco-trail/main-spaces?page=${page}`;
 
             if (search) url += `&search=${search}`;
-            if (subCatId) url += `&sub_cat_id=${subCatId}`;
+            if (CatId) url += `&cat_id=${CatId}`;
 
             const res = await fetch(url, {
                 headers: {
@@ -38,7 +64,7 @@ const EcoTrailList = () => {
 
     useEffect(() => {
         fetchMainSpaces();
-    }, [page, search, subCatId]);
+    }, [page]);
 
     const deleteMainSpace = async (id) => {
         if (!confirm('Are you sure to delete this eco trail space and all its nearby places?')) return;
@@ -58,6 +84,12 @@ const EcoTrailList = () => {
         window.location.href = `/eco-trail/edit/${id}`;
     };
 
+
+
+    const filterFun = () => {
+        fetchMainSpaces();
+    }
+
     return (
         <div className="p-6 bg-white rounded-xl shadow">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
@@ -69,15 +101,21 @@ const EcoTrailList = () => {
                         onChange={(e) => setSearch(e.target.value)}
                         className="border px-3 py-2 rounded w-full"
                     />
-                    <input
-                        type="number"
-                        placeholder="Filter by sub category ID"
-                        value={subCatId}
-                        onChange={(e) => setSubCatId(e.target.value)}
-                        className="border px-3 py-2 rounded w-full md:w-48"
-                    />
+
+                    <select
+                        name="category_id"
+                        value={CatId}
+                        onChange={(e) => setCatId(e.target.value)}
+                        className="w-full border px-3 py-2 rounded"
+                        required
+                    >
+                        <option value="">Select Category</option>
+                        {categories?.map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                    </select>
                     <button
-                        onClick={fetchMainSpaces}
+                        onClick={filterFun}
                         className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 whitespace-nowrap"
                     >
                         Apply Filters
@@ -121,7 +159,7 @@ const EcoTrailList = () => {
                                     <tr key={space.id} className="hover:bg-gray-50">
                                         <td className="border border-gray-300 px-4 py-2 text-center">{space.id}</td>
                                         <td className="border border-gray-300 px-4 py-2">{space.place_name}</td>
-                                        <td className="border border-gray-300 px-4 py-2 text-center">{space.category_id}</td>
+                                        <td className="border border-gray-300 px-4 py-2 text-center">{space.cat_details.name}</td>
                                         <td className="border border-gray-300 px-4 py-2">{space.full_address}</td>
                                         <td className="border border-gray-300 px-4 py-2 text-center">
                                             {space.nearby_places?.length || 0}
@@ -139,6 +177,13 @@ const EcoTrailList = () => {
                                                     className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition text-sm"
                                                 >
                                                     Delete
+                                                </button>
+
+                                                <button
+                                                    onClick={() => navigate(`/eco-trail/map-track/${space.id}`)}
+                                                    className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 transition text-sm"
+                                                >
+                                                    Map
                                                 </button>
                                             </div>
                                         </td>

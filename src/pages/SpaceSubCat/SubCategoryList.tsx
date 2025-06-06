@@ -6,7 +6,13 @@ function SubCategoryList() {
   const [subcategories, setSubcategories] = useState([]);
 
   useEffect(() => {
-    axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/space-sub-categories`)
+    const token = localStorage.getItem('token');
+    axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/space-sub-categories`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    })
       .then(res => setSubcategories(res.data))
       .catch(err => console.error(err));
   }, []);
@@ -14,7 +20,13 @@ function SubCategoryList() {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete?')) return;
     try {
-      await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/api/space-sub-categories/${id}`);
+
+      await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/api/space-sub-categories/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Accept': 'application/json',
+        },
+      });
       setSubcategories(prev => prev.filter(item => item.id !== id));
     } catch (error) {
       console.error(error);
@@ -33,7 +45,7 @@ function SubCategoryList() {
           <tr className="bg-gray-100">
             <th className="p-2 border-b">ID</th>
             <th className="p-2 border-b">Category Name</th>
-             <th className="p-2 border-b">Sub Category Name</th>
+            <th className="p-2 border-b">Sub Category Name</th>
             <th className="p-2 border-b">Short Description</th>
             <th className="p-2 border-b">Images</th>
             <th className="p-2 border-b">Actions</th>

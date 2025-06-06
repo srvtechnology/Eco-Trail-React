@@ -10,7 +10,7 @@ function SubCategoryForm() {
 
   const [form, setForm] = useState({
     cat_id: '',
-      name: '',
+    name: '',
     short_description: '',
     long_description: '',
     additional_info: [{ note: '', tag: '' }],
@@ -42,60 +42,66 @@ function SubCategoryForm() {
   }, []);
 
   // Load existing data if editing
- // In your useEffect for loading data
-useEffect(() => {
-  if (id) {
-    axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/space-sub-categories/${id}`)
-      .then(res => {
-        const data = res.data;
-        let additionalInfo = [];
-        
-        try {
-          // First parse the string from backend
-          const parsedString = JSON.parse(data.additional_info || '[]');
-          
-          // Then check if it's a string that needs to be parsed again
-          if (typeof parsedString === 'string') {
-            additionalInfo = JSON.parse(parsedString);
-          } else {
-            additionalInfo = parsedString;
-          }
-          
-          // Ensure it's an array
-          if (!Array.isArray(additionalInfo)) {
-            additionalInfo = [additionalInfo];
-          }
-          
-          // Clean up each item
-          additionalInfo = additionalInfo.map(item => ({
-            note: item?.note || '',
-            tag: item?.tag || ''
-          }));
-          
-          // Ensure at least one empty field
-          if (additionalInfo.length === 0) {
+  // In your useEffect for loading data
+  useEffect(() => {
+    if (id) {
+      const token = localStorage.getItem('token');
+      axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/space-sub-categories/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      })
+        .then(res => {
+          const data = res.data;
+          let additionalInfo = [];
+
+          try {
+            // First parse the string from backend
+            const parsedString = JSON.parse(data.additional_info || '[]');
+
+            // Then check if it's a string that needs to be parsed again
+            if (typeof parsedString === 'string') {
+              additionalInfo = JSON.parse(parsedString);
+            } else {
+              additionalInfo = parsedString;
+            }
+
+            // Ensure it's an array
+            if (!Array.isArray(additionalInfo)) {
+              additionalInfo = [additionalInfo];
+            }
+
+            // Clean up each item
+            additionalInfo = additionalInfo.map(item => ({
+              note: item?.note || '',
+              tag: item?.tag || ''
+            }));
+
+            // Ensure at least one empty field
+            if (additionalInfo.length === 0) {
+              additionalInfo = [{ note: '', tag: '' }];
+            }
+          } catch (e) {
+            console.error('Error parsing additional_info:', e);
             additionalInfo = [{ note: '', tag: '' }];
           }
-        } catch (e) {
-          console.error('Error parsing additional_info:', e);
-          additionalInfo = [{ note: '', tag: '' }];
-        }
 
-        console.log('Processed additional_info:', additionalInfo);
-        
-        setForm({
-          cat_id: data.cat_id || '',
-          name: data.name || '',
-          short_description: data.short_description || '',
-          long_description: data.long_description || '',
-          additional_info: additionalInfo,
-          existing_images: JSON.parse(data.images || '[]'),
-          new_images: [],
-        });
-      })
-      .catch(err => console.error(err));
-  }
-}, [id]);
+          console.log('Processed additional_info:', additionalInfo);
+
+          setForm({
+            cat_id: data.cat_id || '',
+            name: data.name || '',
+            short_description: data.short_description || '',
+            long_description: data.long_description || '',
+            additional_info: additionalInfo,
+            existing_images: JSON.parse(data.images || '[]'),
+            new_images: [],
+          });
+        })
+        .catch(err => console.error(err));
+    }
+  }, [id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -166,9 +172,13 @@ useEffect(() => {
 
       // Add new images
       form.new_images.forEach(file => fd.append('images[]', file));
-
+      const token = localStorage.getItem('token');
       const config = {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
       };
 
       if (id) {
@@ -217,7 +227,7 @@ useEffect(() => {
           </select>
         </div>
 
-       
+
         <div>
           <label className="block mb-1 font-medium">Sub Category Name</label>
           <input
@@ -228,7 +238,7 @@ useEffect(() => {
             className="w-full border border-gray-300 rounded p-2"
             required
           />
-          </div>
+        </div>
 
         <div>
           <label className="block mb-1 font-medium">Short Description</label>
@@ -305,7 +315,7 @@ useEffect(() => {
           {!id && form.existing_images.length === 0 && (
             <p className="text-gray-500 mb-2">No images uploaded yet</p>
           )}
-          
+
           {id && (
             <>
               <p className="text-sm text-gray-500 mb-2">Existing Images</p>
@@ -315,10 +325,10 @@ useEffect(() => {
                 ) : (
                   form.existing_images.map((img, i) => (
                     <div key={i} className="relative">
-                      <img 
-                        src={`${import.meta.env.VITE_API_BASE_URL}${img}`} 
-                        alt={`existing-${i}`} 
-                        className="h-20 w-20 object-cover rounded border" 
+                      <img
+                        src={`${import.meta.env.VITE_API_BASE_URL}${img}`}
+                        alt={`existing-${i}`}
+                        className="h-20 w-20 object-cover rounded border"
                       />
                       <button
                         type="button"
@@ -333,7 +343,7 @@ useEffect(() => {
               </div>
             </>
           )}
-          
+
           <div>
             <label className="block mb-1 font-medium">
               {id ? 'Upload Additional Images' : 'Upload Images'}

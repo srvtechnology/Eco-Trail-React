@@ -27,6 +27,7 @@ import SubCategoryList from "./pages/SpaceSubCat/SubCategoryList";
 import SubCategoryForm from "./pages/SpaceSubCat/SubCategoryForm";
 import EcoTrailList from "./pages/EcoTrail/EcoTrailList";
 import EcoTrailForm from "./pages/EcoTrail/EcoTrailForm";
+import EcoTrailMapTrack from "./pages/EcoTrail/EcoTrailMapTrack";
 
 export default function App() {
   return (
@@ -61,6 +62,7 @@ export default function App() {
                 <Route path="/eco-trail" element={<EcoTrailList />} />
                 <Route path="/eco-trail/create" element={<EcoTrailForm />} />
                 <Route path="/eco-trail/edit/:id" element={<EcoTrailForm />} />
+                <Route path="/eco-trail/map-track/:id" element={<EcoTrailMapTrack />} />
 
 
 
