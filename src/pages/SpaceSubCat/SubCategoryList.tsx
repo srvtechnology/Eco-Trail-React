@@ -54,15 +54,15 @@ function SubCategoryList() {
         <tbody>
           {subcategories.map(item => (
             <tr key={item.id} className="border-b hover:bg-gray-50 text-center">
-              <td className="border border-gray-300 px-4 py-2">{item.id}</td>
-              <td className="border border-gray-300 px-4 py-2">{item.space_cat.name}</td>
-              <td className="border border-gray-300 px-4 py-2">{item.name}</td>
+              <td className="border border-gray-300 px-4 py-2">{item?.id}</td>
+              <td className="border border-gray-300 px-4 py-2">{item?.space_cat?.name}</td>
+              <td className="border border-gray-300 px-4 py-2">{item?.name}</td>
               <td className="border border-gray-300 px-4 py-2">
-                {item.short_description?.slice(0, 40) || '-'}
+                {item?.short_description?.slice(0, 40) || '-'}
               </td>
               <td className="border border-gray-300 px-4 py-2">
                 <div className="flex justify-center flex-wrap gap-2">
-                  {(JSON.parse(item.images || '[]')).map((img, i) => (
+                  {(JSON.parse(item?.images || '[]')).map((img, i) => (
                     <img
                       key={i}
                       src={`${import.meta.env.VITE_API_BASE_URL}${img}`}

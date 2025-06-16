@@ -157,12 +157,12 @@ const EcoTrailList = () => {
                             ) : (
                                 mainSpaces.map(space => (
                                     <tr key={space.id} className="hover:bg-gray-50">
-                                        <td className="border border-gray-300 px-4 py-2 text-center">{space.id}</td>
-                                        <td className="border border-gray-300 px-4 py-2">{space.place_name}</td>
-                                        <td className="border border-gray-300 px-4 py-2 text-center">{space.cat_details.name}</td>
-                                        <td className="border border-gray-300 px-4 py-2">{space.full_address}</td>
+                                        <td className="border border-gray-300 px-4 py-2 text-center">{space?.id}</td>
+                                        <td className="border border-gray-300 px-4 py-2">{space?.place_name}</td>
+                                        <td className="border border-gray-300 px-4 py-2 text-center">{space?.cat_details?.name}</td>
+                                        <td className="border border-gray-300 px-4 py-2">{space?.full_address}</td>
                                         <td className="border border-gray-300 px-4 py-2 text-center">
-                                            {space.nearby_places?.length || 0}
+                                            {space?.nearby_places?.length || 0}
                                         </td>
                                         <td className="border border-gray-300 px-4 py-2">
                                             <div className="flex justify-center gap-2">
