@@ -3,12 +3,11 @@ import { useNavigate, useParams } from 'react-router';
 import { GoogleMap, Marker, Autocomplete, useJsApiLoader } from '@react-google-maps/api';
 import NearPlaceMaps from './NearPlaceMaps';
 import axios from 'axios';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css'; // Import Quill styles
 
 const libraries = ['places'];
-const mapContainerStyle = {
-  height: '400px',
-  width: '100%'
-};
+
 const center = {
   lat: 0,
   lng: 0
@@ -19,6 +18,7 @@ const EcoTrailForm = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+
   const [formData, setFormData] = useState({
     place_name: '',
     description: '',
@@ -29,7 +29,9 @@ const EcoTrailForm = () => {
     full_address: '',
     featured_image: null,
     gallery_images: [],
-    nearby_places: []
+    nearby_places: [],
+    about_info: [{ title: '', detail: '' }], // <-- Add this line
+    highlight_info: [{ title: '', detail: '' }], // <-- Add this line
   });
   const [errors, setErrors] = useState({});
   const [mapCenter, setMapCenter] = useState(center);
@@ -43,7 +45,7 @@ const EcoTrailForm = () => {
     "Oak", "Maple", "Pine", "Birch", "Willow",
     "Redwood", "Palm", "Cedar", "Spruce", "Elm"
   ]);
-
+  // console.log(formData)
   const mapRef = useRef(null);
   const mainAutocompleteRef = useRef(null);
   const nearbyAutocompleteRefs = useRef([]);
@@ -73,13 +75,7 @@ const EcoTrailForm = () => {
     fetchCategories();
   }, [id]);
 
-  const onMapLoad = useCallback((map) => {
-    mapRef.current = map;
-  }, []);
 
-  const onUnmount = useCallback(() => {
-    mapRef.current = null;
-  }, []);
 
   const fetchMainSpace = async () => {
     setLoading(true);
@@ -100,15 +96,91 @@ const EcoTrailForm = () => {
         images: JSON.parse(place.images || '[]'),
         trees: JSON.parse(place.trees || '[]'),
         facilities_available: JSON.parse(place.facilities_available || '[]'),
-        additional_info: JSON.parse(place.additional_info || '[]'),
+
         selectedTrees: JSON.parse(place.trees || '[]')
       }));
+
+
+
+      let highlight_info = [];
+      try {
+        // First parse the string from backend
+        const parsedString = JSON.parse(data.highlight_info || '[]');
+
+        // Then check if it's a string that needs to be parsed again
+        if (typeof parsedString === 'string') {
+          highlight_info = JSON.parse(parsedString);
+        } else {
+          highlight_info = parsedString;
+        }
+
+        // Ensure it's an array
+        if (!Array.isArray(highlight_info)) {
+          highlight_info = [highlight_info];
+        }
+
+        // Clean up each item
+        highlight_info = highlight_info.map(item => ({
+          title: item?.title || '',
+          detail: item?.detail || ''
+        }));
+
+        // Ensure at least one empty field
+        if (highlight_info.length === 0) {
+          highlight_info = [{ title: '', detail: '' }];
+        }
+      } catch (e) {
+        console.error('Error parsing additional_info:', e);
+        highlight_info = [{ title: '', detail: '' }];
+      }
+      // console.log('Processed additional_info:', highlight_info);
+
+
+
+
+
+      let about_info = [];
+      try {
+        // First parse the string from backend
+        const parsedString = JSON.parse(data.about_info || '[]');
+
+        // Then check if it's a string that needs to be parsed again
+        if (typeof parsedString === 'string') {
+          about_info = JSON.parse(parsedString);
+        } else {
+          about_info = parsedString;
+        }
+
+        // Ensure it's an array
+        if (!Array.isArray(about_info)) {
+          about_info = [about_info];
+        }
+
+        // Clean up each item
+        about_info = about_info.map(item => ({
+          title: item?.title || '',
+          detail: item?.detail || ''
+        }));
+
+        // Ensure at least one empty field
+        if (about_info.length === 0) {
+          about_info = [{ title: '', detail: '' }];
+        }
+      } catch (e) {
+        console.error('Error parsing aboutinfo:', e);
+        about_info = [{ title: '', detail: '' }];
+      }
+      // console.log('Processed aboutinfo:', about_info);
+
+
 
       setFormData({
         ...data,
         gallery_images: [],
         nearby_places: parsedNearbyPlaces,
-        featured_image: null
+        featured_image: null,
+        about_info: about_info,
+        highlight_info: highlight_info,
       });
 
       setExistingImages(parsedGalleryImages.map(img => ({
@@ -135,6 +207,12 @@ const EcoTrailForm = () => {
     setLoading(false);
   };
 
+
+
+
+
+
+
   const fetchCategories = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -151,6 +229,9 @@ const EcoTrailForm = () => {
     }
   };
 
+
+
+
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     if (files.length + existingImages.length + imagePreviews.length > 10) {
@@ -166,6 +247,10 @@ const EcoTrailForm = () => {
     setImagePreviews(previews);
   };
 
+
+
+
+
   const removeImage = (index) => {
     const newPreviews = [...imagePreviews];
     newPreviews.splice(index, 1);
@@ -176,11 +261,15 @@ const EcoTrailForm = () => {
     setSelectedFiles(newFiles);
   };
 
+
+
   const removeExistingImage = (index) => {
     const newExisting = [...existingImages];
     newExisting.splice(index, 1);
     setExistingImages(newExisting);
   };
+
+
 
   const handlePlaceSelect = () => {
     if (mainAutocompleteRef.current) {
@@ -204,154 +293,34 @@ const EcoTrailForm = () => {
     }
   };
 
-  const handleNearbyPlaceLocationSelect = (placeIndex) => {
-    if (nearbyAutocompleteRefs.current[placeIndex]) {
-      const place = nearbyAutocompleteRefs.current[placeIndex].getPlace();
-      if (place.geometry) {
-        const lat = place.geometry.location.lat();
-        const lng = place.geometry.location.lng();
-
-        handleNearbyPlaceChange(placeIndex, 'latitude', lat);
-        handleNearbyPlaceChange(placeIndex, 'longitude', lng);
-        handleNearbyPlaceChange(placeIndex, 'address', place.formatted_address);
-
-        if (formData.latitude && formData.longitude) {
-          const R = 6371;
-          const lat1 = parseFloat(formData.latitude);
-          const lon1 = parseFloat(formData.longitude);
-          const lat2 = lat;
-          const lon2 = lng;
-
-          const dLat = deg2rad(lat2 - lat1);
-          const dLon = deg2rad(lon2 - lon1);
-          const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-          const distance = R * c;
-
-          handleNearbyPlaceChange(placeIndex, 'distance_from_main', distance.toFixed(2));
-        }
-
-        if (placeIndex > 0) {
-          calculateDistance(placeIndex);
-        }
-      }
-    }
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
 
-  const handleNearbyPlaceChange = (index, field, value) => {
-    const updatedPlaces = [...formData.nearby_places];
-    updatedPlaces[index][field] = value;
-    setFormData(prev => ({ ...prev, nearby_places: updatedPlaces }));
-  };
-
-  const handleTreeSelection = (placeIndex, tree) => {
-    const updatedPlaces = [...formData.nearby_places];
-    const selectedTrees = updatedPlaces[placeIndex].selectedTrees || [];
-
-    const treeIndex = selectedTrees.indexOf(tree);
-    if (treeIndex === -1) {
-      selectedTrees.push(tree);
-    } else {
-      selectedTrees.splice(treeIndex, 1);
-    }
-
-    updatedPlaces[placeIndex].selectedTrees = selectedTrees;
-    updatedPlaces[placeIndex].trees = selectedTrees;
-
-    setFormData(prev => ({ ...prev, nearby_places: updatedPlaces }));
-  };
-
-  const addNearbyPlace = () => {
-    setFormData(prev => ({
-      ...prev,
-      nearby_places: [
-        ...prev.nearby_places,
-        {
-          place_name: '',
-          latitude: '',
-          longitude: '',
-          address: '',
-          description: '',
-          distance_from_main: '',
-          distance_unit: 'km',
-          images: [],
-          trees: [],
-          selectedTrees: [],
-          wildlife: '',
-          best_time_to_visit: '',
-          entry_fee: '',
-          opening_hours: '',
-          facilities_available: [],
-          safety_tips: '',
-          estimated_time_spend: '',
-          distance_from_last_point: '',
-          additional_info: [{ key: '', value: '' }]
-        }
-      ]
-    }));
-  };
-
-  const removeNearbyPlace = (index) => {
-    const updatedPlaces = [...formData.nearby_places];
-    updatedPlaces.splice(index, 1);
-    setFormData(prev => ({ ...prev, nearby_places: updatedPlaces }));
-  };
-
-  const addKeyValuePair = (placeIndex) => {
-    const updatedPlaces = [...formData.nearby_places];
-    updatedPlaces[placeIndex].additional_info.push({ key: '', value: '' });
-    setFormData(prev => ({ ...prev, nearby_places: updatedPlaces }));
-  };
-
-  const removeKeyValuePair = (placeIndex, kvIndex) => {
-    const updatedPlaces = [...formData.nearby_places];
-    updatedPlaces[placeIndex].additional_info.splice(kvIndex, 1);
-    setFormData(prev => ({ ...prev, nearby_places: updatedPlaces }));
-  };
-
-  const handleKeyValueChange = (placeIndex, kvIndex, field, value) => {
-    const updatedPlaces = [...formData.nearby_places];
-    updatedPlaces[placeIndex].additional_info[kvIndex][field] = value;
-    setFormData(prev => ({ ...prev, nearby_places: updatedPlaces }));
-  };
-
-  const calculateDistance = (placeIndex) => {
-    if (placeIndex === 0) return;
-
-    const prevPlace = formData.nearby_places[placeIndex - 1];
-    const currentPlace = formData.nearby_places[placeIndex];
-
-    if (!prevPlace.latitude || !prevPlace.longitude || !currentPlace.latitude || !currentPlace.longitude) {
+    // Handle dynamic fields for about_info and heighlights_info
+    if (name.startsWith('about_info.')) {
+      const [, idx, key] = name.split('.');
+      setFormData(prev => {
+        const updated = [...prev.about_info];
+        updated[Number(idx)][key] = value;
+        return { ...prev, about_info: updated };
+      });
       return;
     }
 
-    const R = 6371;
-    const lat1 = deg2rad(parseFloat(prevPlace.latitude));
-    const lon1 = deg2rad(parseFloat(prevPlace.longitude));
-    const lat2 = deg2rad(parseFloat(currentPlace.latitude));
-    const lon2 = deg2rad(parseFloat(currentPlace.longitude));
+    if (name.startsWith('highlight_info.')) {
+      const [, idx, key] = name.split('.');
+      setFormData(prev => {
+        const updated = [...prev.highlight_info];
+        updated[Number(idx)][key] = value;
+        return { ...prev, highlight_info: updated };
+      });
+      return;
+    }
 
-    const dLat = lat2 - lat1;
-    const dLon = lon2 - lon1;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1) * Math.cos(lat2) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-
-    handleNearbyPlaceChange(placeIndex, 'distance_from_last_point', distance.toFixed(2));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const deg2rad = (deg) => deg * (Math.PI / 180);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -366,8 +335,10 @@ const EcoTrailForm = () => {
       formDataToSend.append('category_id', formData.category_id);
       formDataToSend.append('latitude', formData.latitude);
       formDataToSend.append('longitude', formData.longitude);
-      formDataToSend.append('google_maps_link', formData.google_maps_link);
+      // formDataToSend.append('google_maps_link', formData.google_maps_link);
       formDataToSend.append('full_address', formData.full_address);
+      formDataToSend.append('highlight_info', JSON.stringify(formData.highlight_info));
+      formDataToSend.append('about_info', JSON.stringify(formData.about_info));
 
       if (formData.featured_image) {
         formDataToSend.append('featured_image', formData.featured_image);
@@ -413,6 +384,43 @@ const EcoTrailForm = () => {
       console.error('Error submitting form:', error);
     }
     setLoading(false);
+  };
+
+
+
+
+
+
+  const addAboutInfo = () => {
+    setFormData(prev => ({
+      ...prev,
+      about_info: [...prev.about_info, { title: '', detail: '' }]
+    }));
+  };
+
+  const removeAboutInfo = (index) => {
+    if (formData.about_info.length <= 1) return;
+    setFormData(prev => {
+      const updated = [...prev.about_info];
+      updated.splice(index, 1);
+      return { ...prev, about_info: updated };
+    });
+  };
+
+  const addHighlightsInfo = () => {
+    setFormData(prev => ({
+      ...prev,
+      highlight_info: [...prev.highlight_info, { title: '', detail: '' }]
+    }));
+  };
+
+  const removeHighlightsInfo = (index) => {
+    if (formData.highlight_info.length <= 1) return;
+    setFormData(prev => {
+      const updated = [...prev.highlight_info];
+      updated.splice(index, 1);
+      return { ...prev, highlight_info: updated };
+    });
   };
 
   if (loadError) return <div>Error loading maps</div>;
@@ -462,15 +470,24 @@ const EcoTrailForm = () => {
 
             <div className="md:col-span-2">
               <label className="block mb-2 font-medium">Description*</label>
-              <textarea
-                name="description"
+
+              <ReactQuill
+                theme="snow"
                 value={formData.description}
-                onChange={handleInputChange}
-                className="w-full border px-3 py-2 rounded"
-                rows="4"
-                required
+                onChange={(value) =>
+                  handleInputChange({
+                    target: {
+                      name: 'description',
+                      value: value,
+                    },
+                  })
+                }
+                className="bg-white"
               />
-              {errors.description && <p className="text-red-500 text-sm">{errors.description}</p>}
+
+              {errors.description && (
+                <p className="text-red-500 text-sm">{errors.description}</p>
+              )}
             </div>
 
             <div className="md:col-span-2">
@@ -515,7 +532,7 @@ const EcoTrailForm = () => {
               {errors.longitude && <p className="text-red-500 text-sm">{errors.longitude}</p>}
             </div>
 
-            <div className="md:col-span-2">
+            {/* <div className="md:col-span-2">
               <label className="block mb-2 font-medium">Google Maps Link</label>
               <input
                 type="url"
@@ -525,7 +542,7 @@ const EcoTrailForm = () => {
                 className="w-full border px-3 py-2 rounded"
               />
               {errors.google_maps_link && <p className="text-red-500 text-sm">{errors.google_maps_link}</p>}
-            </div>
+            </div> */}
 
             <div className="md:col-span-2">
               <label className="block mb-2 font-medium">Full Address*</label>
@@ -547,28 +564,125 @@ const EcoTrailForm = () => {
               Coordinates: {formData.latitude}, {formData.longitude}
             </div>
           ) : (
-            <div className="mt-4" style={{ height: '400px' }}>
-              <GoogleMap
-                mapContainerStyle={mapContainerStyle}
-                center={{
-                  lat: parseFloat(formData.latitude),
-                  lng: parseFloat(formData.longitude),
-                }}
-                zoom={15}
-                onLoad={onMapLoad}
-                onUnmount={onUnmount}
-              >
-                {formData.latitude && formData.longitude && (
-                  <Marker
-                    position={{ lat: Number(formData.latitude), lng: Number(formData.longitude) }}
-                  />
-                )}
-              </GoogleMap>
-            </div>
+            // <div className="mt-4" style={{ height: '400px' }}>
+            //   <GoogleMap
+            //     mapContainerStyle={mapContainerStyle}
+            //     center={{
+            //       lat: parseFloat(formData.latitude),
+            //       lng: parseFloat(formData.longitude),
+            //     }}
+            //     zoom={15}
+            //     onLoad={onMapLoad}
+            //     onUnmount={onUnmount}
+            //   >
+            //     {formData.latitude && formData.longitude && (
+            //       <Marker
+            //         position={{ lat: Number(formData.latitude), lng: Number(formData.longitude) }}
+            //       />
+            //     )}
+            //   </GoogleMap>
+            // </div>
+            <></>
 
           )}
 
           <NearPlaceMaps lat={formData.latitude} lng={formData.longitude} />
+        </div>
+
+
+        <div>
+          <label className="block mb-1 font-medium">Highlights Info</label>
+          {formData.highlight_info.map((info, index) => (
+            <div key={index} className="grid grid-cols-2 gap-4 mb-4 items-end">
+              <div>
+                <input
+                  type="text"
+                  name={`highlight_info.${index}.title`}
+                  value={info.title || ''}
+                  onChange={handleInputChange}
+                  placeholder="Title"
+                  className="border border-gray-300 rounded p-2 w-full"
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    name={`highlight_info.${index}.detail`}
+                    value={info.detail || ''}
+                    onChange={handleInputChange}
+                    placeholder="Detail"
+                    className="border border-gray-300 rounded p-2 flex-1"
+                  />
+                  {index === 0 ? (
+                    <button
+                      type="button"
+                      onClick={addHighlightsInfo}
+                      className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                    >
+                      +
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => removeHighlightsInfo(index)}
+                      className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                    >
+                      -
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+
+        <div>
+          <label className="block mb-1 font-medium">About Info</label>
+          {formData.about_info.map((info, index) => (
+            <div key={index} className="grid grid-cols-2 gap-4 mb-4 items-end">
+              <div>
+                <input
+                  type="text"
+                  name={`about_info.${index}.title`}
+                  value={info.title || ''}
+                  onChange={handleInputChange}
+                  placeholder="Title"
+                  className="border border-gray-300 rounded p-2 w-full"
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    name={`about_info.${index}.detail`}
+                    value={info.detail || ''}
+                    onChange={handleInputChange}
+                    placeholder="Detail"
+                    className="border border-gray-300 rounded p-2 flex-1"
+                  />
+                  {index === 0 ? (
+                    <button
+                      type="button"
+                      onClick={addAboutInfo}
+                      className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                    >
+                      +
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => removeAboutInfo(index)}
+                      className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                    >
+                      -
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className="mb-8 p-4 border rounded-lg">
@@ -660,305 +774,15 @@ const EcoTrailForm = () => {
                 ))}
               </div>
             </div>
+
+
+
+
+
+
           </div>
         </div>
 
-        <div className="mb-8 p-4 border rounded-lg">
-          <h3 className="text-xl font-semibold mb-4">Nearby Places to Visit</h3>
-
-          {formData.nearby_places.map((place, placeIndex) => (
-            <div key={placeIndex} className="mb-6 p-4 border rounded-lg bg-gray-50">
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="text-lg font-medium">Place #{placeIndex + 1}</h4>
-                <button
-                  type="button"
-                  onClick={() => removeNearbyPlace(placeIndex)}
-                  className="bg-red-500 text-white px-3 py-1 rounded text-sm"
-                >
-                  Remove
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-2 font-medium">Place Name*</label>
-                  <input
-                    type="text"
-                    value={place.place_name}
-                    onChange={(e) => handleNearbyPlaceChange(placeIndex, 'place_name', e.target.value)}
-                    className="w-full border px-3 py-2 rounded"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium">Sub Category (Famous For)</label>
-                  <select
-                    value={place.sub_cat_id}
-                    onChange={(e) => handleNearbyPlaceChange(placeIndex, 'sub_cat_id', e.target.value)}
-                    className="w-full border px-3 py-2 rounded"
-                  >
-                    <option value="">Select Sub Category</option>
-                    {subCategories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block mb-2 font-medium">Location Search*</label>
-                  <Autocomplete
-                    onLoad={auto => nearbyAutocompleteRefs.current[placeIndex] = auto}
-                    onPlaceChanged={() => handleNearbyPlaceLocationSelect(placeIndex)}
-                  >
-                    <input
-                      type="text"
-                      placeholder="Search for a location"
-                      className="w-full border px-3 py-2 rounded"
-                      defaultValue={place.address}
-                    />
-                  </Autocomplete>
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium">Latitude*</label>
-                  <input
-                    type="text"
-                    value={place.latitude}
-                    onChange={(e) => handleNearbyPlaceChange(placeIndex, 'latitude', e.target.value)}
-                    className="w-full border px-3 py-2 rounded"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium">Longitude*</label>
-                  <input
-                    type="text"
-                    value={place.longitude}
-                    onChange={(e) => handleNearbyPlaceChange(placeIndex, 'longitude', e.target.value)}
-                    className="w-full border px-3 py-2 rounded"
-                    required
-                  />
-                </div>
-
-
-                <NearPlaceMaps lat={place?.latitude} lng={place?.longitude} />
-
-                <div>
-                  <label className="block mb-2 font-medium">Distance from Main Place*</label>
-                  <div className="flex">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={place.distance_from_main}
-                      onChange={(e) => handleNearbyPlaceChange(placeIndex, 'distance_from_main', e.target.value)}
-                      className="w-full border px-3 py-2 rounded rounded-r-none"
-                      required
-                    />
-                    <select
-                      value={place.distance_unit}
-                      onChange={(e) => handleNearbyPlaceChange(placeIndex, 'distance_unit', e.target.value)}
-                      className="border border-l-0 px-3 py-2 rounded rounded-l-none"
-                    >
-                      <option value="km">km</option>
-                      <option value="miles">miles</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium">Distance from Previous Point</label>
-                  <div className="flex">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={place.distance_from_last_point}
-                      onChange={(e) => handleNearbyPlaceChange(placeIndex, 'distance_from_last_point', e.target.value)}
-                      className="w-full border px-3 py-2 rounded rounded-r-none"
-                      readOnly={placeIndex > 0}
-                    />
-                    <span className="border border-l-0 px-3 py-2 bg-gray-100 rounded rounded-l-none">
-                      {place.distance_unit}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block mb-2 font-medium">Description*</label>
-                  <textarea
-                    value={place.description}
-                    onChange={(e) => handleNearbyPlaceChange(placeIndex, 'description', e.target.value)}
-                    className="w-full border px-3 py-2 rounded"
-                    rows="3"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium">Wildlife</label>
-                  <input
-                    type="text"
-                    value={place.wildlife}
-                    onChange={(e) => handleNearbyPlaceChange(placeIndex, 'wildlife', e.target.value)}
-                    className="w-full border px-3 py-2 rounded"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium">Best Time to Visit</label>
-                  <input
-                    type="text"
-                    value={place.best_time_to_visit}
-                    onChange={(e) => handleNearbyPlaceChange(placeIndex, 'best_time_to_visit', e.target.value)}
-                    className="w-full border px-3 py-2 rounded"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium">Entry Fee</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={place.entry_fee}
-                    onChange={(e) => handleNearbyPlaceChange(placeIndex, 'entry_fee', e.target.value)}
-                    className="w-full border px-3 py-2 rounded"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium">Opening Hours</label>
-                  <input
-                    type="text"
-                    value={place.opening_hours}
-                    onChange={(e) => handleNearbyPlaceChange(placeIndex, 'opening_hours', e.target.value)}
-                    className="w-full border px-3 py-2 rounded"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium">Estimated Time to Spend</label>
-                  <input
-                    type="text"
-                    value={place.estimated_time_spend}
-                    onChange={(e) => handleNearbyPlaceChange(placeIndex, 'estimated_time_spend', e.target.value)}
-                    className="w-full border px-3 py-2 rounded"
-                    placeholder="e.g., 2-3 hours"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-2 font-medium">Safety Tips</label>
-                  <textarea
-                    value={place.safety_tips}
-                    onChange={(e) => handleNearbyPlaceChange(placeIndex, 'safety_tips', e.target.value)}
-                    className="w-full border px-3 py-2 rounded"
-                    rows="2"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block mb-2 font-medium">Facilities Available</label>
-                  <div className="flex flex-wrap gap-2">
-                    {['Restroom', 'Parking', 'Guide', 'Food', 'First Aid', 'Viewpoint', 'Camping'].map(facility => (
-                      <div key={facility} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id={`facility-${placeIndex}-${facility}`}
-                          checked={place.facilities_available?.includes(facility) || false}
-                          onChange={(e) => {
-                            const updatedFacilities = place.facilities_available || [];
-                            if (e.target.checked) {
-                              updatedFacilities.push(facility);
-                            } else {
-                              const index = updatedFacilities.indexOf(facility);
-                              if (index > -1) {
-                                updatedFacilities.splice(index, 1);
-                              }
-                            }
-                            handleNearbyPlaceChange(placeIndex, 'facilities_available', updatedFacilities);
-                          }}
-                          className="mr-2"
-                        />
-                        <label htmlFor={`facility-${placeIndex}-${facility}`}>{facility}</label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block mb-2 font-medium">Trees Found</label>
-                  <div className="flex flex-wrap gap-2">
-                    {availableTrees.map(tree => (
-                      <div key={tree} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id={`tree-${placeIndex}-${tree}`}
-                          checked={place.selectedTrees?.includes(tree) || false}
-                          onChange={() => handleTreeSelection(placeIndex, tree)}
-                          className="mr-2"
-                        />
-                        <label htmlFor={`tree-${placeIndex}-${tree}`}>{tree}</label>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-2">
-                    Selected: {place.selectedTrees?.join(', ') || 'None'}
-                  </div>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block mb-2 font-medium">Additional Info</label>
-                  <div className="space-y-2">
-                    {place.additional_info?.map((item, kvIndex) => (
-                      <div key={kvIndex} className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Key"
-                          value={item.key}
-                          onChange={(e) => handleKeyValueChange(placeIndex, kvIndex, 'key', e.target.value)}
-                          className="border px-3 py-2 rounded flex-1"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Value"
-                          value={item.value}
-                          onChange={(e) => handleKeyValueChange(placeIndex, kvIndex, 'value', e.target.value)}
-                          className="border px-3 py-2 rounded flex-1"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeKeyValuePair(placeIndex, kvIndex)}
-                          className="bg-red-500 text-white px-3 py-2 rounded"
-                          disabled={place.additional_info.length <= 1}
-                        >
-                          -
-                        </button>
-                        {kvIndex === place.additional_info.length - 1 && (
-                          <button
-                            type="button"
-                            onClick={() => addKeyValuePair(placeIndex)}
-                            className="bg-green-500 text-white px-3 py-2 rounded"
-                          >
-                            +
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-
-          <button
-            type="button"
-            onClick={addNearbyPlace}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-          >
-            + Add Nearby Place
-          </button>
-        </div>
 
         <div className="flex justify-end gap-4">
           <button

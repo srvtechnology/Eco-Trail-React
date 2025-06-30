@@ -28,6 +28,9 @@ import SubCategoryForm from "./pages/SpaceSubCat/SubCategoryForm";
 import EcoTrailList from "./pages/EcoTrail/EcoTrailList";
 import EcoTrailForm from "./pages/EcoTrail/EcoTrailForm";
 import EcoTrailMapTrack from "./pages/EcoTrail/EcoTrailMapTrack";
+import 'react-quill/dist/quill.snow.css';
+import UserList from "./pages/User/UserList";
+
 
 export default function App() {
   return (
@@ -63,6 +66,10 @@ export default function App() {
                 <Route path="/eco-trail/create" element={<EcoTrailForm />} />
                 <Route path="/eco-trail/edit/:id" element={<EcoTrailForm />} />
                 <Route path="/eco-trail/map-track/:id" element={<EcoTrailMapTrack />} />
+
+                {/* user */}
+                 <Route path="/users" element={<UserList />} />
+
 
 
 

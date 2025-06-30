@@ -53,7 +53,7 @@ const EcoTrailList = () => {
             });
 
             const data = await res.json();
-            console.log('Main Spaces:', data.data);
+            // console.log('Main Spaces:', data.data);
             setMainSpaces(data.data.data);
             setMeta(data.data);
         } catch (error) {
@@ -70,8 +70,8 @@ const EcoTrailList = () => {
         if (!confirm('Are you sure to delete this eco trail space and all its nearby places?')) return;
 
         const token = localStorage.getItem('token');
-        await fetch(`${import.meta.env.VITE_API_BASE_URL}/eco-trail/main-spaces/${id}`, {
-            method: 'DELETE',
+        await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/eco-trail/main-spaces/delete/${id}`, {
+            method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
             },
@@ -143,7 +143,7 @@ const EcoTrailList = () => {
                                 <th className="border border-gray-300 px-4 py-2">Place Name</th>
                                 <th className="border border-gray-300 px-4 py-2">Category</th>
                                 <th className="border border-gray-300 px-4 py-2">Address</th>
-                                <th className="border border-gray-300 px-4 py-2">Nearby Places</th>
+                                {/* <th className="border border-gray-300 px-4 py-2">Nearby Places</th> */}
                                 <th className="border border-gray-300 px-4 py-2">Actions</th>
                             </tr>
                         </thead>
@@ -161,9 +161,9 @@ const EcoTrailList = () => {
                                         <td className="border border-gray-300 px-4 py-2">{space?.place_name}</td>
                                         <td className="border border-gray-300 px-4 py-2 text-center">{space?.cat_details?.name}</td>
                                         <td className="border border-gray-300 px-4 py-2">{space?.full_address}</td>
-                                        <td className="border border-gray-300 px-4 py-2 text-center">
+                                        {/* <td className="border border-gray-300 px-4 py-2 text-center">
                                             {space?.nearby_places?.length || 0}
-                                        </td>
+                                        </td> */}
                                         <td className="border border-gray-300 px-4 py-2">
                                             <div className="flex justify-center gap-2">
                                                 <button

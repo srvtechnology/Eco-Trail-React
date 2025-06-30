@@ -6,6 +6,7 @@ function SubCategoryList() {
   const [subcategories, setSubcategories] = useState([]);
 
   useEffect(() => {
+    window.location="/space-category"
     const token = localStorage.getItem('token');
     axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/space-sub-categories`, {
       headers: {
