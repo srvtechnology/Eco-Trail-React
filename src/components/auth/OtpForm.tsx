@@ -46,7 +46,7 @@ export default function OtpForm({ email }: OtpFormProps) {
                 if (response && response.status !== 422) {
                     localStorage.setItem('token', response.data.token);
                     localStorage.setItem('userData', JSON.stringify(response.data.user));
-                    window.location.href = '/dashboard';
+                    window.location.href = '/';
                 } else if (response && response.status === 422) {
                     alert(response.data.message);
                 } else {
@@ -67,7 +67,7 @@ export default function OtpForm({ email }: OtpFormProps) {
 
     return (
         <div className="flex flex-col flex-1">
-            <div className="w-full max-w-md pt-10 mx-auto">
+            {/* <div className="w-full max-w-md pt-10 mx-auto">
                 <Link
                     to="/"
                     className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
@@ -75,7 +75,7 @@ export default function OtpForm({ email }: OtpFormProps) {
                     <ChevronLeftIcon className="size-5" />
                     Back to dashboard
                 </Link>
-            </div>
+            </div> */}
 
             <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
                 <div>

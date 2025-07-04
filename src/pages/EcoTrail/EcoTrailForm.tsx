@@ -30,8 +30,9 @@ const EcoTrailForm = () => {
     featured_image: null,
     gallery_images: [],
     nearby_places: [],
-    about_info: [{ title: '', detail: '' }], // <-- Add this line
-    highlight_info: [{ title: '', detail: '' }], // <-- Add this line
+    about_info: [{ title: '', detail: '' }],
+    highlight_info: [{ title: '', detail: '' }],
+    latlong_info: [],
   });
   const [errors, setErrors] = useState({});
   const [mapCenter, setMapCenter] = useState(center);
@@ -173,6 +174,41 @@ const EcoTrailForm = () => {
       // console.log('Processed aboutinfo:', about_info);
 
 
+      let latlong_info = [];
+      try {
+        // First parse the string from backend
+        const parsedString = JSON.parse(data.latlong_info || '[]');
+
+        // Then check if it's a string that needs to be parsed again
+        if (typeof parsedString === 'string') {
+          latlong_info = JSON.parse(parsedString);
+        } else {
+          latlong_info = parsedString;
+        }
+
+        // Ensure it's an array
+        if (!Array.isArray(latlong_info)) {
+          latlong_info = [latlong_info];
+        }
+
+        // Clean up each item
+        latlong_info = latlong_info.map(item => ({
+          lat: item?.lat || '',
+          lng: item?.lng || ''
+        }));
+
+        // Ensure at least one empty field
+        if (latlong_info.length === 0) {
+          latlong_info = [];
+        }
+      } catch (e) {
+        console.error('Error parsing latlong_info:', e);
+        latlong_info = [];
+      }
+      // console.log('Processed latlong_info:', latlong_info);
+
+
+
 
       setFormData({
         ...data,
@@ -181,6 +217,7 @@ const EcoTrailForm = () => {
         featured_image: null,
         about_info: about_info,
         highlight_info: highlight_info,
+        latlong_info: latlong_info,
       });
 
       setExistingImages(parsedGalleryImages.map(img => ({
@@ -294,6 +331,25 @@ const EcoTrailForm = () => {
   };
 
 
+  // Add handlers for dynamic latlong_info
+  const addLatLongInfo = () => {
+    setFormData(prev => ({
+      ...prev,
+      latlong_info: [...prev.latlong_info, { lat: '', lng: '' }]
+    }));
+  };
+
+  const removeLatLongInfo = (index) => {
+    // if (formData.latlong_info.length <= 1) return;
+    setFormData(prev => {
+      const updated = [...prev.latlong_info];
+      updated.splice(index, 1);
+      return { ...prev, latlong_info: updated };
+    });
+  };
+
+
+  // Update handleInputChange to support latlong_info
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
@@ -314,6 +370,16 @@ const EcoTrailForm = () => {
         const updated = [...prev.highlight_info];
         updated[Number(idx)][key] = value;
         return { ...prev, highlight_info: updated };
+      });
+      return;
+    }
+
+    if (name.startsWith('latlong_info.')) {
+      const [, idx, key] = name.split('.');
+      setFormData(prev => {
+        const updated = [...prev.latlong_info];
+        updated[Number(idx)][key] = value;
+        return { ...prev, latlong_info: updated };
       });
       return;
     }
@@ -339,6 +405,7 @@ const EcoTrailForm = () => {
       formDataToSend.append('full_address', formData.full_address);
       formDataToSend.append('highlight_info', JSON.stringify(formData.highlight_info));
       formDataToSend.append('about_info', JSON.stringify(formData.about_info));
+      formDataToSend.append('latlong_info', JSON.stringify(formData.latlong_info));
 
       if (formData.featured_image) {
         formDataToSend.append('featured_image', formData.featured_image);
@@ -378,6 +445,7 @@ const EcoTrailForm = () => {
       if (response.ok) {
         navigate('/eco-trail');
       } else {
+        // console.error('Error submitting form:', data);
         setErrors(data.errors || {});
       }
     } catch (error) {
@@ -491,7 +559,7 @@ const EcoTrailForm = () => {
             </div>
 
             <div className="md:col-span-2">
-              <label className="block mb-2 font-medium">Location Search*</label>
+              <label className="block mb-2 font-medium">Location Search</label>
               <Autocomplete
                 onLoad={auto => mainAutocompleteRef.current = auto}
                 onPlaceChanged={handlePlaceSelect}
@@ -507,27 +575,27 @@ const EcoTrailForm = () => {
             </div>
 
             <div>
-              <label className="block mb-2 font-medium">Latitude*</label>
+              <label className="block mb-2 font-medium">Latitude</label>
               <input
                 type="text"
                 name="latitude"
                 value={formData.latitude}
                 onChange={handleInputChange}
                 className="w-full border px-3 py-2 rounded"
-                required
+
               />
               {errors.latitude && <p className="text-red-500 text-sm">{errors.latitude}</p>}
             </div>
 
             <div>
-              <label className="block mb-2 font-medium">Longitude*</label>
+              <label className="block mb-2 font-medium">Longitude</label>
               <input
                 type="text"
                 name="longitude"
                 value={formData.longitude}
                 onChange={handleInputChange}
                 className="w-full border px-3 py-2 rounded"
-                required
+
               />
               {errors.longitude && <p className="text-red-500 text-sm">{errors.longitude}</p>}
             </div>
@@ -545,14 +613,13 @@ const EcoTrailForm = () => {
             </div> */}
 
             <div className="md:col-span-2">
-              <label className="block mb-2 font-medium">Full Address*</label>
+              <label className="block mb-2 font-medium">Full Address</label>
               <textarea
                 name="full_address"
                 value={formData.full_address}
                 onChange={handleInputChange}
                 className="w-full border px-3 py-2 rounded"
                 rows="2"
-                required
               />
               {errors.full_address && <p className="text-red-500 text-sm">{errors.full_address}</p>}
             </div>
@@ -586,8 +653,90 @@ const EcoTrailForm = () => {
 
           )}
 
-          <NearPlaceMaps lat={formData.latitude} lng={formData.longitude} />
+          {/* <NearPlaceMaps lat={formData.latitude} lng={formData.longitude} /> */}
+
+          <NearPlaceMaps
+            lat={formData.latitude}
+            lng={formData.longitude}
+            latlongInfo={formData.latlong_info}
+            onMainMarkerDrag={({ lat, lng }) => {
+              setFormData(prev => ({
+                ...prev,
+                latitude: lat,
+                longitude: lng
+              }));
+            }}
+            onMapClickAddPoint={({ lat, lng }) => {
+              setFormData(prev => ({
+                ...prev,
+                latlong_info: [...prev.latlong_info, { lat, lng }]
+              }));
+            }}
+          />
+
         </div>
+
+
+
+        {/* Dynamic Lat/Long Info Fields */}
+        <div>
+          <label className="block mb-1 font-medium">Lat/Long point</label>
+          <small className="text-gray-500">Click on the map to add a point</small>
+          {formData.latlong_info.map((info, index) => (
+            <div key={index} className="grid grid-cols-2 gap-4 mb-4 items-end">
+              <div>
+                <input
+                  type="text"
+                  name={`latlong_info.${index}.lat`}
+                  value={info.lat || ''}
+                  onChange={handleInputChange}
+                  placeholder="Latitude"
+                  className="border border-gray-300 rounded p-2 w-full"
+                  readOnly={true}
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    name={`latlong_info.${index}.lng`}
+                    value={info.lng || ''}
+                    onChange={handleInputChange}
+                    placeholder="Longitude"
+                    className="border border-gray-300 rounded p-2 flex-1"
+                    readOnly={true}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => removeLatLongInfo(index)}
+                    className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                  >
+                    -
+                  </button>
+                  {/* {index === 0 ? (
+                    <button
+                      type="button"
+                      onClick={addLatLongInfo}
+                      className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                    >
+                      +
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => removeLatLongInfo(index)}
+                      className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                    >
+                      -
+                    </button>
+                  )} */}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <br></br>
 
 
         <div>
@@ -685,8 +834,23 @@ const EcoTrailForm = () => {
           ))}
         </div>
 
+
         <div className="mb-8 p-4 border rounded-lg">
           <h3 className="text-xl font-semibold mb-4">Media</h3>
+          {console.log('Featured Image:', errors)}
+          {errors.featured_image && <p className="text-red-500 text-sm">{errors.featured_image}</p>}
+          {Object.keys(errors).map((key) => {
+            if (key.startsWith('gallery_images.')) {
+              return (
+                <p key={key} className="text-red-500 text-sm">
+                  {errors[key][0]}
+                </p>
+              );
+            }
+            return null;
+          })}
+
+
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -803,7 +967,7 @@ const EcoTrailForm = () => {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             )}
-            {isEditMode ? 'Update' : 'Create'}
+            {isEditMode ? 'Update' : 'Save'}
           </button>
         </div>
       </form>

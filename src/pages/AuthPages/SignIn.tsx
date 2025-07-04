@@ -6,8 +6,8 @@ export default function SignIn() {
   return (
     <>
       <PageMeta
-        title="Property Management"
-        description="Property Management"
+        title="Echotrail"
+        description="Echotrail"
       />
       <AuthLayout>
         <SignInForm />

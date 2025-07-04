@@ -115,8 +115,13 @@ const AppSidebar: React.FC = () => {
 
   // const isActive = (path: string) => location.pathname === path;
   const isActive = useCallback(
-    // console.log(location.pathname , path)
-    (path: string) => location.pathname.includes(path),
+    (path: string) => {
+      if (path === "/") {
+        // Active for root or any path that starts with /
+        return location.pathname === "/" || location.pathname === "";
+      }
+      return location.pathname.startsWith(path);
+    },
     [location.pathname]
   );
   // console.log(location.pathname)
