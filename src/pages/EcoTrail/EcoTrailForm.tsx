@@ -174,6 +174,8 @@ const EcoTrailForm = () => {
       // console.log('Processed aboutinfo:', about_info);
 
 
+
+
       let latlong_info = [];
       try {
         // First parse the string from backend
@@ -194,7 +196,10 @@ const EcoTrailForm = () => {
         // Clean up each item
         latlong_info = latlong_info.map(item => ({
           lat: item?.lat || '',
-          lng: item?.lng || ''
+          lng: item?.lng || '',
+          name: item?.name || '',
+          description: item?.description || '',
+          image: item?.image instanceof File ? `${item.image}` : `${item?.image || null}`
         }));
 
         // Ensure at least one empty field
@@ -331,13 +336,7 @@ const EcoTrailForm = () => {
   };
 
 
-  // Add handlers for dynamic latlong_info
-  const addLatLongInfo = () => {
-    setFormData(prev => ({
-      ...prev,
-      latlong_info: [...prev.latlong_info, { lat: '', lng: '' }]
-    }));
-  };
+
 
   const removeLatLongInfo = (index) => {
     // if (formData.latlong_info.length <= 1) return;
@@ -388,6 +387,9 @@ const EcoTrailForm = () => {
   };
 
 
+
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -396,29 +398,61 @@ const EcoTrailForm = () => {
       const token = localStorage.getItem('token');
       const formDataToSend = new FormData();
 
+      // Append basic fields
       formDataToSend.append('place_name', formData.place_name);
       formDataToSend.append('description', formData.description);
       formDataToSend.append('category_id', formData.category_id);
       formDataToSend.append('latitude', formData.latitude);
       formDataToSend.append('longitude', formData.longitude);
-      // formDataToSend.append('google_maps_link', formData.google_maps_link);
       formDataToSend.append('full_address', formData.full_address);
       formDataToSend.append('highlight_info', JSON.stringify(formData.highlight_info));
       formDataToSend.append('about_info', JSON.stringify(formData.about_info));
-      formDataToSend.append('latlong_info', JSON.stringify(formData.latlong_info));
 
+      // Handle latlong_info with images
+      formData.latlong_info.forEach((point, index) => {
+        // Append each point property
+        formDataToSend.append(`latlong_info[${index}][lat]`, point.lat);
+        formDataToSend.append(`latlong_info[${index}][lng]`, point.lng);
+        formDataToSend.append(`latlong_info[${index}][name]`, point.name || '');
+        formDataToSend.append(`latlong_info[${index}][description]`, point.description || '');
+
+        // Handle image upload - only append if it's a File object
+        if (point.image instanceof File) {
+          formDataToSend.append(`latlong_info[${index}][image]`, point.image);
+        } else if (typeof point.image === 'string') {
+          // For existing image URLs (when editing)
+          formDataToSend.append(`latlong_info[${index}][image_url]`, point.image);
+        }
+      });
+
+      // Also include the stringified version if backend needs it
+      formDataToSend.append('latlong_info_json', JSON.stringify(
+        formData.latlong_info.map(point => ({
+          lat: point.lat,
+          lng: point.lng,
+          name: point.name,
+          description: point.description,
+          // Don't include File objects in JSON
+          image: point.image instanceof File ? undefined : point.image
+        }))
+      ));
+
+      // Handle featured image
       if (formData.featured_image) {
         formDataToSend.append('featured_image', formData.featured_image);
       }
 
+      // Handle gallery images
       selectedFiles.forEach(file => {
         formDataToSend.append('gallery_images[]', file);
       });
 
+      // Handle existing images
       existingImages.forEach(img => {
         formDataToSend.append('existing_images[]', img.path);
       });
 
+      // Handle nearby places
       const nearbyPlacesToSend = formData.nearby_places.map(place => ({
         ...place,
         trees: place.selectedTrees
@@ -428,7 +462,6 @@ const EcoTrailForm = () => {
       const url = isEditMode
         ? `${import.meta.env.VITE_API_BASE_URL}/api/eco-trail/main-spaces/${id}?_method=PUT`
         : `${import.meta.env.VITE_API_BASE_URL}/api/eco-trail/main-spaces`;
-
 
       const method = isEditMode ? 'POST' : 'POST';
 
@@ -445,16 +478,14 @@ const EcoTrailForm = () => {
       if (response.ok) {
         navigate('/eco-trail');
       } else {
-        // console.error('Error submitting form:', data);
         setErrors(data.errors || {});
       }
     } catch (error) {
       console.error('Error submitting form:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
-
-
 
 
 
@@ -494,6 +525,39 @@ const EcoTrailForm = () => {
   if (loadError) return <div>Error loading maps</div>;
   if (!isLoaded) return <div>Loading Maps...</div>;
   if (loading && isEditMode) return <div>Loading...</div>;
+
+
+
+  const handleImageUpload = (e, index) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData(prev => {
+        const updatedLatLongInfo = [...prev.latlong_info];
+        updatedLatLongInfo[index] = {
+          ...updatedLatLongInfo[index],
+          image: file // Store the File object directly
+        };
+        return {
+          ...prev,
+          latlong_info: updatedLatLongInfo
+        };
+      });
+    }
+  };
+
+  const removeImageTwo = (index) => {
+    setFormData(prev => {
+      const updatedLatLongInfo = [...prev.latlong_info];
+      updatedLatLongInfo[index] = {
+        ...updatedLatLongInfo[index],
+        image: null
+      };
+      return {
+        ...prev,
+        latlong_info: updatedLatLongInfo
+      };
+    });
+  };
 
   return (
     <div className="p-6 bg-white rounded-xl shadow">
@@ -655,7 +719,7 @@ const EcoTrailForm = () => {
 
           {/* <NearPlaceMaps lat={formData.latitude} lng={formData.longitude} /> */}
 
-          <NearPlaceMaps
+          {/* <NearPlaceMaps
             lat={formData.latitude}
             lng={formData.longitude}
             latlongInfo={formData.latlong_info}
@@ -672,6 +736,31 @@ const EcoTrailForm = () => {
                 latlong_info: [...prev.latlong_info, { lat, lng }]
               }));
             }}
+          /> */}
+
+          <NearPlaceMaps
+            lat={formData.latitude}
+            lng={formData.longitude}
+            latlongInfo={formData.latlong_info}
+            onMainMarkerDrag={({ lat, lng }) => {
+              setFormData(prev => ({
+                ...prev,
+                latitude: lat,
+                longitude: lng
+              }));
+            }}
+            onMapClickAddPoint={({ lat, lng }) => {
+              setFormData(prev => ({
+                ...prev,
+                latlong_info: [...prev.latlong_info, {
+                  lat,
+                  lng,
+                  name: '',
+                  description: '',
+                  image: null
+                }]
+              }));
+            }}
           />
 
         </div>
@@ -680,49 +769,36 @@ const EcoTrailForm = () => {
 
         {/* Dynamic Lat/Long Info Fields */}
         <div>
-          <label className="block mb-1 font-medium">Lat/Long point</label>
+          <label className="block mb-1 font-medium">Points Information</label>
           <small className="text-gray-500">Click on the map to add a point</small>
           {formData.latlong_info.map((info, index) => (
-            <div key={index} className="grid grid-cols-2 gap-4 mb-4 items-end">
-              <div>
-                <input
-                  type="text"
-                  name={`latlong_info.${index}.lat`}
-                  value={info.lat || ''}
-                  onChange={handleInputChange}
-                  placeholder="Latitude"
-                  className="border border-gray-300 rounded p-2 w-full"
-                  readOnly={true}
-                />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
+            <div key={index} className="grid grid-cols-1 gap-4 mb-6 p-4 border rounded-lg">
+              <h3 className="font-semibold">Point {index + 1}</h3>
+              <div className="grid grid-cols-2 gap-4 mb-2">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Latitude</label>
                   <input
                     type="text"
-                    name={`latlong_info.${index}.lng`}
-                    value={info.lng || ''}
+                    name={`latlong_info.${index}.lat`}
+                    value={info.lat || ''}
                     onChange={handleInputChange}
-                    placeholder="Longitude"
-                    className="border border-gray-300 rounded p-2 flex-1"
+                    placeholder="Latitude"
+                    className="border border-gray-300 rounded p-2 w-full"
                     readOnly={true}
                   />
-
-                  <button
-                    type="button"
-                    onClick={() => removeLatLongInfo(index)}
-                    className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center"
-                  >
-                    -
-                  </button>
-                  {/* {index === 0 ? (
-                    <button
-                      type="button"
-                      onClick={addLatLongInfo}
-                      className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center"
-                    >
-                      +
-                    </button>
-                  ) : (
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Longitude</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      name={`latlong_info.${index}.lng`}
+                      value={info.lng || ''}
+                      onChange={handleInputChange}
+                      placeholder="Longitude"
+                      className="border border-gray-300 rounded p-2 flex-1"
+                      readOnly={true}
+                    />
                     <button
                       type="button"
                       onClick={() => removeLatLongInfo(index)}
@@ -730,8 +806,60 @@ const EcoTrailForm = () => {
                     >
                       -
                     </button>
-                  )} */}
+                  </div>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Point Name</label>
+                <input
+                  type="text"
+                  name={`latlong_info.${index}.name`}
+                  value={info.name || ''}
+                  onChange={handleInputChange}
+                  placeholder="Enter point name"
+                  className="border border-gray-300 rounded p-2 w-full"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Description</label>
+                <textarea
+                  name={`latlong_info.${index}.description`}
+                  value={info.description || ''}
+                  onChange={handleInputChange}
+                  placeholder="Enter description"
+                  className="border border-gray-300 rounded p-2 w-full"
+                  rows="3"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleImageUpload(e, index)}
+                  className="border border-gray-300 rounded p-2 w-full"
+                />
+                {info.image && (
+                  <div className="mt-2">
+                    {typeof info.image === 'string' ? (
+                      // Display existing image (when editing)
+                      <img src={`${import.meta.env.VITE_API_BASE_URL}/storage/${info.image}`} alt="Preview" className="h-20 object-cover rounded" />
+                    ) : (
+                      // Display preview for newly uploaded file
+                      <img src={URL.createObjectURL(info.image)} alt="Preview" className="h-20 object-cover rounded" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeImageTwo(index)}
+                      className="mt-1 text-red-500 text-sm"
+                    >
+                      Remove Image
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -837,7 +965,7 @@ const EcoTrailForm = () => {
 
         <div className="mb-8 p-4 border rounded-lg">
           <h3 className="text-xl font-semibold mb-4">Media</h3>
-          {console.log('Featured Image:', errors)}
+          {/* {console.log('Featured Image:', errors)} */}
           {errors.featured_image && <p className="text-red-500 text-sm">{errors.featured_image}</p>}
           {Object.keys(errors).map((key) => {
             if (key.startsWith('gallery_images.')) {

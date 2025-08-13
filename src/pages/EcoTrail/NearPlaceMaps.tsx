@@ -81,6 +81,19 @@ const NearPlaceMaps = ({
           )}
 
           {/* Dynamic latlong_info markers */}
+          {/* {latlongInfo.map((point, index) => (
+            <Marker
+              key={index}
+              position={{
+                lat: Number(point.lat),
+                lng: Number(point.lng),
+              }}
+              icon={{
+                url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+              }}
+            />
+          ))} */}
+
           {latlongInfo.map((point, index) => (
             <Marker
               key={index}
@@ -91,6 +104,8 @@ const NearPlaceMaps = ({
               icon={{
                 url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
               }}
+              label={point.name ? point.name.charAt(0) : String(index + 1)}
+              title={point.name || `Point ${index + 1}`}
             />
           ))}
         </GoogleMap>
