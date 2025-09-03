@@ -968,15 +968,23 @@ const EcoTrailForm = () => {
           {/* {console.log('Featured Image:', errors)} */}
           {errors.featured_image && <p className="text-red-500 text-sm">{errors.featured_image}</p>}
           {Object.keys(errors).map((key) => {
-            if (key.startsWith('gallery_images.')) {
+            if (key.startsWith("gallery_images.")) {
+              // extract the number after gallery_images.
+              const index = parseInt(key.split(".")[1], 10) + 1; // start from 1
+              const message = errors[key][0].replace(
+                `gallery_images.${index - 1}`,
+                `gallery Image ${index}`
+              );
+
               return (
                 <p key={key} className="text-red-500 text-sm">
-                  {errors[key][0]}
+                  {message}
                 </p>
               );
             }
             return null;
           })}
+
 
 
 
